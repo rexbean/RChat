@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--default id for toolbar-->
+    <item name="toolbar" type="id" />
+    <!--RecyclerView holder tag-->
+    <item name = "recyclerView_holder" type = "id" />
+</resources>
