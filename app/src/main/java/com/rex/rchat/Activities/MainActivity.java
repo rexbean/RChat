@@ -8,8 +8,7 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import com.rex.common.common.app.Activity;
-import com.rex.factory.net.SendThread;
-import com.rex.factory.net.SocketManager;
+import com.rex.common.net.SocketManager;
 import com.rex.rchat.R;
 import com.rex.rchat.SocketService;
 

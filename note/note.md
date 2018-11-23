@@ -116,3 +116,17 @@ public enum Singleton{
 - Solution: Using interface for callback
 ### 9. Socket vs NIO.Socket
 - NIO Socket using selector to process the socket which has finished prepareing io
+### 10. new Runnable.run() will run in the same thread not new one 
+- Solution new Thread(new Runnable(){}).start()
+### 11. Can't create handler inside thread that has not called Looper.prepare()
+- Solution: in the main thread it doesn't matter, but in other thread, Looper.prepare()
+and Looper.loop();
+### 12, when initializing the avd, it will appear adb.exe has stopped.
+- Solution: port for adb.exe has been used. using netstat -aon | findstr "5307"
+            kill the process of that pid.
+### 13, Emulator: audio: Failed to create voice `adc'
+- Solution: 1. Go to: Tools > Android > AVD Manager
+            2. Press the "edit" (pencil) icon next to your AVD
+            3. Change "Graphics" to "Software".
+
+

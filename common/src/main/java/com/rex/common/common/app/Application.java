@@ -2,6 +2,8 @@ package com.rex.common.common.app;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Handler;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,5 +68,15 @@ public abstract class Application extends android.app.Application {
 
     public static Application getInstance(){
         return instance;
+    }
+
+    public void show(final String text){
+        Handler myHandler = new Handler(getMainLooper());
+        myHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(Application.this, text, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 }

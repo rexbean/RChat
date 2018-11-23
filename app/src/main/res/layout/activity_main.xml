@@ -16,7 +16,7 @@
         app:layout_constraintTop_toTopOf="parent" />
     <Button
         android:id="@+id/testButton"
-        android:layout_height="20dp"
-        android:layout_width="20dp"/>
+        android:layout_height="200dp"
+        android:layout_width="120dp"/>
 
 </android.support.constraint.ConstraintLayout>

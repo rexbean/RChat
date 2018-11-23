@@ -1,4 +1,4 @@
-package com.rex.factory.net;
+package com.rex.common.net;
 
 public enum NetworkStatus {
     CONNECTED(1, "Connected"),

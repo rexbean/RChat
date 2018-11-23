@@ -1,4 +1,4 @@
-package com.rex.factory.net;
+package com.rex.common.net;
 
 public interface INetwork {
 
@@ -8,5 +8,7 @@ public interface INetwork {
     void sendMessage(String data);
 
     void close();
+
+    void reconnect();
 
 }
