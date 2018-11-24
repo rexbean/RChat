@@ -3,6 +3,7 @@ package com.rex.common.net;
 import android.util.Log;
 
 import com.rex.common.utils.PacketUtil;
+import com.rex.common.utils.TypeUtil;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -12,13 +13,13 @@ import java.net.Socket;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public class SendThread extends Thread{
-    private static OutputStream mOut;
+public class OutputThread extends Thread{
     private static Socket mSocket;
     private static final Queue<String> msgQueue = new LinkedList<>();
     private ISocketStatus mListener;
+    private static BufferedOutputStream bos;
 
-    public SendThread(Socket socket, ISocketStatus listener){
+    public OutputThread(Socket socket, ISocketStatus listener){
         mSocket = socket;
         mListener = listener;
         init();
@@ -27,7 +28,7 @@ public class SendThread extends Thread{
 
     private void init(){
         try {
-            mOut = mSocket.getOutputStream();
+             bos = new BufferedOutputStream(mSocket.getOutputStream());
         } catch (IOException e) {
             onFailed("Get outputStream failed");
             e.printStackTrace();
@@ -41,15 +42,14 @@ public class SendThread extends Thread{
                 try {
                     while(!msgQueue.isEmpty()){
                         String msg = msgQueue.poll();
-                        Log.d("SendThread","before send out message: " + msg);
-                        byte[] packet = PacketUtil.constructPacket(msg.getBytes());
+                        Log.d("OutputThread","before send out message: " + msg);
+                        // todo: serialize data using protocol buffer
+                        byte[] data = TypeUtil.ObjectToByte(msg);
+                        byte[] packet = PacketUtil.constructPacket(data);
 
-                        BufferedOutputStream bos = new BufferedOutputStream(mOut);
                         bos.write(packet);
                         bos.flush();
-                        Log.d("SendThread","after send out message: " + msg);
-                        // todo: serialize the message
-                        // todo: send message out
+                        Log.d("OutputThread","after send out message: " + msg);
                     }
 //                    mSocket.shutdownOutput();//关闭输出流
                     msgQueue.wait();
@@ -82,7 +82,7 @@ public class SendThread extends Thread{
             while(msgQueue.size() != 0){
                 Thread.sleep(50);
             }
-            mOut.close();
+            bos.close();
         } catch (InterruptedException | IOException e) {
             onFailed("Send Close Failed");
             e.printStackTrace();

@@ -7,12 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 
-import static com.rex.common.net.packet.HEAD;
-import static com.rex.common.net.packet.HEAD_LEN;
-import static com.rex.common.net.packet.PACKET_MAX_LEN;
-
-
-public class ReceiveThread<Data> extends Thread{
+public class InputThread extends Thread{
     private static InputStream mIn;
     private static Socket mSocket;
     private ISocketStatus mListener;
@@ -20,7 +15,7 @@ public class ReceiveThread<Data> extends Thread{
     private byte[] packet = new byte[0];
     private int dataLen;
 
-    public ReceiveThread(Socket socket, ISocketStatus listener){
+    public InputThread(Socket socket, ISocketStatus listener){
         mSocket = socket;
         mListener = listener;
         init();
@@ -53,28 +48,6 @@ public class ReceiveThread<Data> extends Thread{
             }
         }
 
-    }
-
-
-    private int getHead(final BufferedInputStream bis){
-        byte[] head = new byte[HEAD_LEN];
-        int len = -1;
-        try {
-            len = bis.read(head,0, HEAD_LEN);
-            // does not have head
-            if(len < HEAD_LEN || (head != HEAD)){
-                return -1;
-            }
-            return len;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return -1;
-        }
-    }
-
-    private short getDataLen(final BufferedInputStream bis){
-        return 0;
-//        byte[] dataLen = new byte[]
     }
 
     private void onFailed(String errorMsg){

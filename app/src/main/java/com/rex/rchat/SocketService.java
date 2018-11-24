@@ -45,17 +45,18 @@ public class SocketService extends Service implements ISocketStatus {
     }
 
     private void sendHeartBeat(){
-        new Handler().postDelayed(new Runnable(){
-            @Override
-            public void run() {
-                try{
-                    SocketManager.getInstance().sendHeartBeat();
-                } catch (Exception e){
-                    e.printStackTrace();
-                }
-
-            }
-        }, 2000);
+//        Handler myHandler = new Handler(getMainLooper());
+//        myHandler.postDelayed(new Runnable(){
+//            @Override
+//            public void run() {
+//                try{
+//                    SocketManager.getInstance().sendHeartBeat();
+//                    myHandler.postDelayed(this,2000);
+//                } catch (Exception e){
+//                    e.printStackTrace();
+//                }
+//            }
+//        }, 2000);
     }
 
 

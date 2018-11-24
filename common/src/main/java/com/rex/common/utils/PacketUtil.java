@@ -1,54 +1,52 @@
 package com.rex.common.utils;
 
+
 import com.rex.common.message.MessageManager;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import static com.rex.common.net.packet.DATA_LEN;
 import static com.rex.common.net.packet.HEAD;
 import static com.rex.common.net.packet.HEAD_LEN;
-import static com.rex.common.net.packet.PACKET_MAX_LEN;
+import static com.rex.common.net.packet.BUFFER_MAX_LEN;
 
 public class PacketUtil {
-
-
     public static byte[] constructPacket(byte[] data){
         byte[] packet = new byte[data.length + HEAD_LEN + DATA_LEN];
-        packet = merge(packet,HEAD,0,HEAD_LEN);
-        packet = merge(packet, TypeUtil.intToByte(data.length), 0, DATA_LEN);
-        packet = merge(packet, data, 0, data.length);
+        System.arraycopy(HEAD,0, packet, 0, HEAD_LEN);
+        System.arraycopy(TypeUtil.intToByte(data.length), 0, packet, HEAD_LEN, DATA_LEN);
+        System.arraycopy(data, 0, packet, HEAD_LEN + DATA_LEN, data.length);
         return packet;
     }
     public static int mergeAndCut(byte[] packet, int dataLen, BufferedInputStream bis){
-        byte[] buffer = new byte[PACKET_MAX_LEN];
+        if(packet.length == 0) {
+            System.out.println("cutStickyPacket");
+            return cutStickyPacket(packet, bis);
+        } else {
+            System.out.println("readAndMerge");
+            return readAndMerge(bis, dataLen, packet);
+        }
+    }
+
+    private static int readAndMerge(BufferedInputStream bis, int dataLen, byte[] packet) {
         try{
+            byte[] buffer = new byte[BUFFER_MAX_LEN];
             int len = bis.read(buffer);
             if(len == -1) {
                 return -1;
             }
-            if(packet.length == 0){
-                dataLen = getPacketInfo(buffer, 0);
-                dataLen = PacketUtil.cutStickyPacket(packet, bis, dataLen);
-
-            } else {
-                if(dataLen - packet.length > bis.available()){
-                    return -1;
-                } else {
-                    dataLen = PacketUtil.cutStickyPacket(packet, bis, dataLen);
-                }
-            }
-            return dataLen;
-        } catch (IOException e) {
-            e.printStackTrace();
+            int needLen = dataLen - packet.length;
+            System.out.println("ReadAndMerge needLen = " + needLen);
+            return helper(len, needLen, 0, buffer, packet, bis);
+        } catch (IOException e){
             return -1;
         }
     }
     private static int getPacketInfo(byte[] buffer, int start){
         for(int i = 0; i < HEAD_LEN;i++){
             if(buffer[start + i] != HEAD[i]){
+                System.out.println("validate HEAD failed");
                 return -1;
             }
         }
@@ -61,37 +59,107 @@ public class PacketUtil {
 
 
     private static int cutStickyPacket(byte[] packet,
-                                       final BufferedInputStream bis,
-                                       int dataLen){
-        try {
-            int len = 0;
-            int start = 0;
-            byte[] buffer = new byte[PACKET_MAX_LEN];
-            while ((len = bis.read(buffer)) != -1) {
-                while (start >= len) {
-                    if (len < dataLen - packet.length) {
-                        packet = merge(packet, buffer, 0, dataLen - packet.length);
-                        start = buffer.length;
-                    } else {
-                        packet = merge(packet, buffer, start, dataLen - packet.length);
-                        start += dataLen - packet.length;
-                        MessageManager.getInstance().add(packet);
-                        packet = new byte[0];
-                        dataLen = getPacketInfo(buffer, start);
-                        if (dataLen == -1) {
-                            break;
-                        }
-                    }
-                }
+                                       final BufferedInputStream bis){
+        try{
+            byte[] buffer = new byte[BUFFER_MAX_LEN];
+            int len = bis.read(buffer);
+            if(len < HEAD_LEN + DATA_LEN){
+                return -1;
             }
-            return dataLen;
+            int dataLen = getPacketInfo(buffer, 0);
+            if (dataLen == -1) {
+                return -1;
+            }
+            System.out.println("Cut Sticky packet, dataLen = " + dataLen);
+            return helper(len, dataLen + HEAD_LEN + DATA_LEN, 0, buffer, packet, bis);
         } catch (IOException e) {
             e.printStackTrace();
             return -1;
         }
     }
+    private static int helper(int len,
+                              int needLen,
+                              int start,
+                              byte[] buffer,
+                              byte[] packet,
+                              BufferedInputStream bis){
+        try{
+            // whole stream has been used out
+            if(len <= 0){
+                return needLen;
+            }
+            int dataLen;
+            // the rest length of the buffer >= needed
+            if(len >= needLen){
+                if(packet.length == 0){
+                    start = start + HEAD_LEN + DATA_LEN;
+                    dataLen = needLen - HEAD_LEN - DATA_LEN;
+                } else {
+                    dataLen = needLen;
+                }
+                packet = saveData(packet, buffer, start, dataLen);
 
-    public static byte[] merge(byte[] packet, final byte[] buffer, int start, int len){
+                int rest = len - needLen;
+                if(rest < HEAD_LEN + DATA_LEN) {
+                    byte[] temp = new byte[HEAD_LEN + DATA_LEN];
+                    rest = saveHead(temp, buffer, rest, bis);
+                    if(rest == -1){
+                        return -1;
+                    }
+                    start = 0;
+                } else {
+                    start = rest;
+                }
+                needLen = getPacketInfo(buffer, start);
+                if(needLen == -1){
+                    return -1;
+                }
+                helper(rest, needLen + HEAD_LEN + DATA_LEN, start, buffer, packet, bis);
+            } else {
+                if(packet.length == 0){
+                    start = start + HEAD_LEN + DATA_LEN;
+                } else {
+                    start = 0;
+                }
+                packet = merge(packet, buffer, start, len - start);
+                needLen -= len;
+                len = bis.read(buffer);
+                helper(len, needLen,0, buffer, packet, bis);
+            }
+        } catch (IOException e) {
+            return -1;
+        }
+        return needLen;
+    }
+
+    private static byte[] saveData(byte[] packet, byte[] buffer, int start, int  dataLen){
+        packet = merge(packet, buffer, start, dataLen);
+        MessageManager.getInstance().add(packet);
+        System.out.println("Message has been added");
+        packet = new byte[0];
+        return packet;
+    }
+
+    private static int saveHead(byte[] temp,
+                                byte[] buffer,
+                                int rest,
+                                BufferedInputStream bis){
+        try{
+            System.arraycopy(buffer, rest, temp,0, rest);
+            int len = bis.read(buffer);
+            if(len == -1){
+                return -1;
+            }
+            System.arraycopy(buffer, 0, temp, rest, HEAD_LEN + DATA_LEN - rest);
+            return len;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return -1;
+        }
+
+    }
+    private static byte[] merge(byte[] packet, final byte[] buffer, int start, int len){
+        System.out.println(start + " " + packet.length + " " + len + " " + buffer.length);
         byte[] temp = new byte[packet.length + len];
         System.arraycopy(packet,0, temp, 0, packet.length);
         System.arraycopy(buffer, start, temp, packet.length, len);

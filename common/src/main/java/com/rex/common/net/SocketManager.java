@@ -9,11 +9,11 @@ public class SocketManager implements INetwork, ISocketStatus{
     private volatile static SocketManager instance;
     private static Socket mSocket;
     private static final int PORT = 6666;
-    private static final String IP_ADDR = "192.168.1.172";
-//    private static final String IP_ADDR = "10.0.2.2";
+    //private static final String IP_ADDR = "192.168.1.172";
+    private static final String IP_ADDR = "10.0.2.2";
 
-    private static SendThread mOut;
-    private static ReceiveThread mIn;
+    private static OutputThread mOut;
+    private static InputThread mIn;
 
     private boolean hasSendError = false;
 
@@ -74,8 +74,8 @@ public class SocketManager implements INetwork, ISocketStatus{
 
     private void init() {
         if(mSocket != null){
-            mOut = new SendThread(mSocket, this);
-            mIn = new ReceiveThread(mSocket, this);
+            mOut = new OutputThread(mSocket, this);
+            mIn = new InputThread(mSocket, this);
         }
 
     }
@@ -89,7 +89,7 @@ public class SocketManager implements INetwork, ISocketStatus{
     @Override
     public void sendMessage(String data) {
         if(getConnectionStatus() == NetworkStatus.CONNECTED){
-            SendThread.appendMsg(data);
+            OutputThread.appendMsg(data);
         } else {
             mListener.onFailed("Send Message Failed, Please Connect First");
         }
@@ -98,7 +98,7 @@ public class SocketManager implements INetwork, ISocketStatus{
     public void sendHeartBeat(){
         //todo: construct heat beat here
         String heartBeat = "heartBeat";
-        SendThread.appendMsg(heartBeat);
+        OutputThread.appendMsg(heartBeat);
     }
 
     @Override
@@ -109,14 +109,14 @@ public class SocketManager implements INetwork, ISocketStatus{
 
     @Override
     public void reconnect() {
-        for (int i = 0; i < 3; i++){
-            if(getConnectionStatus() != NetworkStatus.CONNECTED){
-                Log.d(this.getClass().getSimpleName(),"reconnect "+ (i+1)+" times");
-                connect();
-            } else {
-                return;
-            }
-        }
+//        for (int i = 0; i < 3; i++){
+//            if(getConnectionStatus() != NetworkStatus.CONNECTED){
+//                Log.d(this.getClass().getSimpleName(),"reconnect "+ (i+1)+" times");
+//                connect();
+//            } else {
+//                return;
+//            }
+//        }
         onFailed("reconnection failed");
     }
 
