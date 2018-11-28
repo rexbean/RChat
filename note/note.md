@@ -121,12 +121,41 @@ public enum Singleton{
 ### 11. Can't create handler inside thread that has not called Looper.prepare()
 - Solution: in the main thread it doesn't matter, but in other thread, Looper.prepare()
 and Looper.loop();
-### 12, when initializing the avd, it will appear adb.exe has stopped.
+### 12. when initializing the avd, it will appear adb.exe has stopped.
 - Solution: port for adb.exe has been used. using netstat -aon | findstr "5307"
             kill the process of that pid.
-### 13, Emulator: audio: Failed to create voice `adc'
+### 13. Emulator: audio: Failed to create voice `adc'
 - Solution: 1. Go to: Tools > Android > AVD Manager
             2. Press the "edit" (pencil) icon next to your AVD
             3. Change "Graphics" to "Software".
+### 14. Close a thread elegantly 
+- Solution using Two- Terminated Stage
+- https://openhome.cc/Gossip/DesignPattern/TwoPhaseTermination.htm
+```java
+public class SomeThread extends Thread {
+    private boolean isTerminated = false;
 
+    public void terminate() {
+        isTerminated = true;
+        interrupt();
+    }
+
+    private void doWorkBeforeShutdown() {
+        // .... do some work before shutdown
+    }
+
+    public void run() {
+        try {
+            while(!isTerminated) {
+                // ... some statements
+            }
+        }
+        catch(InterruptedException e) {
+        }
+        finally {
+            doWorkBeforeShutdown();
+        }
+    }
+ }
+```
 
