@@ -15,6 +15,7 @@ import com.rex.rchat.SocketService;
 import butterknife.BindView;
 import butterknife.OnClick;
 import icepick.State;
+import timber.log.Timber;
 
 public class MainActivity extends Activity {
     @BindView(R.id.testText)
@@ -35,9 +36,9 @@ public class MainActivity extends Activity {
     @Override
     protected void initBefore() {
         Intent intent = new Intent(this, SocketService.class);
-        Log.d("MainActivity","before start service");
+        Timber.d("before start service");
         startService(intent);
-        Log.d("MainActivity","after start service");
+        Timber.d("after start service");
 
     }
 
@@ -249,11 +250,12 @@ public class MainActivity extends Activity {
                 "　　　　mListener.onArticleSelected(noteUri);\n" +
                 "　　　　　　}\n" +
                 "　　　　...\n" +
-                "　　}";
+                "　　}\n";
 //        for(int i = 0; i < 100; i++) {
 //            for (int j = 0; j < 100; j++){
 //                Log.d("MainActivity", "before append msg: " + String.valueOf(i));
             SocketManager.getInstance().sendMessage("here is the data " + text);
+            Timber.d("Data has sent");
 //            Log.d("MainActivity", "after append msg: " + String.valueOf(i));
 //            }
 //            try {

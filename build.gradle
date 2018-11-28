@@ -45,5 +45,8 @@ ext{
     dbflowVersion = '4.0.3'
     icepickVersion = '3.2.0'
     eventBusVersion = '3.1.1'
+    slf4jTimberVersion = '3.1'
+    timberVersion = '4.7.1'
+    slf4Verstion = '1.7.25'
 
 }

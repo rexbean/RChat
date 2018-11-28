@@ -1,23 +1,34 @@
 package com.rex.common.net;
 
-import android.util.Log;
 
+import com.rex.common.utils.PacketUtil;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+
 
 public class SocketManager implements INetwork, ISocketStatus{
     private volatile static SocketManager instance;
-    private static Socket mSocket;
+
+    private static final Logger logger = LoggerFactory.getLogger(PacketUtil.class.getSimpleName());
     private static final int PORT = 6666;
-    //private static final String IP_ADDR = "192.168.1.172";
-    private static final String IP_ADDR = "10.0.2.2";
+    private static final int RECONNECT_INTERVAL = 3000;
+    private static final int SOCKET_TIMETOUT = 2000;
+    private static final String IP_ADDR = "192.168.1.173";
+    private static Socket mSocket;
+    //private static final String IP_ADDR = "10.0.2.2";
 
     private static OutputThread mOut;
     private static InputThread mIn;
 
-    private boolean hasSendError = false;
-
     private NetworkStatus mStatus = NetworkStatus.DISCONNECTED;
+    private boolean reconnect = false;
 
     private ISocketStatus mListener;
 
@@ -48,9 +59,10 @@ public class SocketManager implements INetwork, ISocketStatus{
             @Override
             public void run() {
                 try {
-                    Log.d("SocketManager", "before connect to server");
-                    mSocket = new Socket(IP_ADDR, PORT);
-                    Log.d("SocketManager","Socket has connected");
+                    logger.debug("before connect to server");
+                    mSocket = new Socket();
+                    mSocket.connect(new InetSocketAddress(IP_ADDR,PORT),SOCKET_TIMETOUT);
+                    logger.debug("Socket has connected");
                     init();
                     startThread();
                 } catch (IOException e) {
@@ -73,10 +85,18 @@ public class SocketManager implements INetwork, ISocketStatus{
     }
 
     private void init() {
-        if(mSocket != null){
-            mOut = new OutputThread(mSocket, this);
-            mIn = new InputThread(mSocket, this);
+        try {
+            if(mSocket != null){
+                mOut = new OutputThread(new BufferedOutputStream(mSocket.getOutputStream()), this);
+                mIn = new InputThread(new BufferedInputStream(mSocket.getInputStream()), this);
+            }
+        } catch (IOException e) {
+            if(mListener != null) {
+                mListener.onFailed("new thread error");
+            }
+            e.printStackTrace();
         }
+
 
     }
 
@@ -103,40 +123,66 @@ public class SocketManager implements INetwork, ISocketStatus{
 
     @Override
     public void close() {
-        mOut.close();
-        mIn.close();
+        try{
+            if(mSocket != null && !mSocket.isClosed()){
+                if(!mSocket.isInputShutdown()){
+                    mSocket.shutdownInput();
+                }
+                if(!mSocket.isOutputShutdown()){
+                    mSocket.shutdownOutput();
+                }
+            }
+
+            mIn.close();
+            mOut.close();
+
+            mIn = null;
+            mOut = null;
+
+            if(reconnect) {
+                reconnect();
+            }
+        } catch (IOException e){
+            onFailed("disconnect error");
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void reconnect() {
-//        for (int i = 0; i < 3; i++){
-//            if(getConnectionStatus() != NetworkStatus.CONNECTED){
-//                Log.d(this.getClass().getSimpleName(),"reconnect "+ (i+1)+" times");
-//                connect();
-//            } else {
-//                return;
-//            }
-//        }
-        onFailed("reconnection failed");
+        try {
+            for (int i = 0; i < 3; i++){
+                if(getConnectionStatus() != NetworkStatus.CONNECTED){
+                    wait(RECONNECT_INTERVAL);
+                    logger.debug("reconnect "+ (i+1)+" times");
+                    connect();
+                } else {
+                    return;
+                }
+            }
+            onFailed("Reconnect failed");
+        } catch (InterruptedException e) {
+            onFailed("Error happened during waiting for reconnecting 3 seconds");
+        }
+
     }
 
 
     @Override
     public void onFailed(String errorMsg) {
         mStatus = NetworkStatus.FAILED;
+        reconnect = true;
+    }
 
-        if(mListener != null && !hasSendError){
-            hasSendError = true;
-            mListener.onFailed(errorMsg);
-        }
-
+    @Override
+    public void onTerminated() {
+        close();
     }
 
     @Override
     public void onConnected() {
         mStatus = NetworkStatus.CONNECTED;
 
-        hasSendError = false;
         if(mListener != null){
             mListener.onConnected();
         }

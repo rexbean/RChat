@@ -3,6 +3,9 @@ package com.rex.common.utils;
 
 import com.rex.common.message.MessageManager;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 
@@ -12,6 +15,7 @@ import static com.rex.common.net.packet.HEAD_LEN;
 import static com.rex.common.net.packet.BUFFER_MAX_LEN;
 
 public class PacketUtil {
+    private static final Logger logger = LoggerFactory.getLogger(PacketUtil.class.getSimpleName());
     public static byte[] constructPacket(byte[] data){
         byte[] packet = new byte[data.length + HEAD_LEN + DATA_LEN];
         System.arraycopy(HEAD,0, packet, 0, HEAD_LEN);
@@ -21,10 +25,10 @@ public class PacketUtil {
     }
     public static int mergeAndCut(byte[] packet, int dataLen, BufferedInputStream bis){
         if(packet.length == 0) {
-            System.out.println("cutStickyPacket");
+            logger.debug("cutStickyPacket");
             return cutStickyPacket(packet, bis);
         } else {
-            System.out.println("readAndMerge");
+            logger.debug("readAndMerge");
             return readAndMerge(bis, dataLen, packet);
         }
     }
@@ -37,7 +41,7 @@ public class PacketUtil {
                 return -1;
             }
             int needLen = dataLen - packet.length;
-            System.out.println("ReadAndMerge needLen = " + needLen);
+            logger.debug("ReadAndMerge needLen = %s", needLen);
             return helper(len, needLen, 0, buffer, packet, bis);
         } catch (IOException e){
             return -1;
@@ -46,7 +50,7 @@ public class PacketUtil {
     private static int getPacketInfo(byte[] buffer, int start){
         for(int i = 0; i < HEAD_LEN;i++){
             if(buffer[start + i] != HEAD[i]){
-                System.out.println("validate HEAD failed");
+                logger.error("validate HEAD failed");
                 return -1;
             }
         }
@@ -70,7 +74,7 @@ public class PacketUtil {
             if (dataLen == -1) {
                 return -1;
             }
-            System.out.println("Cut Sticky packet, dataLen = " + dataLen);
+            logger.debug("Cut Sticky packet, dataLen = %s" ,dataLen);
             return helper(len, dataLen + HEAD_LEN + DATA_LEN, 0, buffer, packet, bis);
         } catch (IOException e) {
             e.printStackTrace();
@@ -88,14 +92,12 @@ public class PacketUtil {
             if(len <= 0){
                 return needLen;
             }
-            int dataLen;
+            int dataLen = needLen;
             // the rest length of the buffer >= needed
             if(len >= needLen){
-                if(packet.length == 0){
+                if(packet.length == 0) {
                     start = start + HEAD_LEN + DATA_LEN;
                     dataLen = needLen - HEAD_LEN - DATA_LEN;
-                } else {
-                    dataLen = needLen;
                 }
                 packet = saveData(packet, buffer, start, dataLen);
 
@@ -114,28 +116,24 @@ public class PacketUtil {
                 if(needLen == -1){
                     return -1;
                 }
-                helper(rest, needLen + HEAD_LEN + DATA_LEN, start, buffer, packet, bis);
+                return helper(rest, needLen + HEAD_LEN + DATA_LEN, start, buffer, packet, bis);
             } else {
-                if(packet.length == 0){
-                    start = start + HEAD_LEN + DATA_LEN;
-                } else {
-                    start = 0;
-                }
+                start = packet.length == 0 ? start + HEAD_LEN + DATA_LEN : 0;
                 packet = merge(packet, buffer, start, len - start);
                 needLen -= len;
                 len = bis.read(buffer);
-                helper(len, needLen,0, buffer, packet, bis);
+                return helper(len, needLen,0, buffer, packet, bis);
             }
         } catch (IOException e) {
+            e.printStackTrace();
             return -1;
         }
-        return needLen;
     }
 
     private static byte[] saveData(byte[] packet, byte[] buffer, int start, int  dataLen){
         packet = merge(packet, buffer, start, dataLen);
         MessageManager.getInstance().add(packet);
-        System.out.println("Message has been added");
+        logger.debug("Message has been added");
         packet = new byte[0];
         return packet;
     }
@@ -159,7 +157,7 @@ public class PacketUtil {
 
     }
     private static byte[] merge(byte[] packet, final byte[] buffer, int start, int len){
-        System.out.println(start + " " + packet.length + " " + len + " " + buffer.length);
+        logger.debug(start + " " + packet.length + " " + len + " " + buffer.length);
         byte[] temp = new byte[packet.length + len];
         System.arraycopy(packet,0, temp, 0, packet.length);
         System.arraycopy(buffer, start, temp, packet.length, len);

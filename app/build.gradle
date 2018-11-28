@@ -39,6 +39,8 @@ dependencies {
     implementation "frankiesardo:icepick:$rootProject.ext.icepickVersion"
     compileOnly "frankiesardo:icepick-processor:$rootProject.ext.icepickVersion"
     annotationProcessor "frankiesardo:icepick-processor:$rootProject.ext.icepickVersion"
+    implementation "com.arcao:slf4j-timber:$rootProject.ext.slf4jTimberVersion@aar"
+    implementation "com.jakewharton.timber:timber:$rootProject.ext.timberVersion"
+
     implementation project(':factory')
-    implementation project(':common')
 }

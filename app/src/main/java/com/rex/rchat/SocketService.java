@@ -15,8 +15,11 @@ import com.rex.common.net.ISocketStatus;
 import com.rex.common.net.NetworkStatus;
 import com.rex.common.net.SocketManager;
 
+import timber.log.Timber;
+
 public class SocketService extends Service implements ISocketStatus {
     private boolean hasReconnect = false;
+    private boolean hasConnected = false;
     private boolean hasLost = false;
 
     @Nullable
@@ -35,11 +38,6 @@ public class SocketService extends Service implements ISocketStatus {
     @Override
     public void onCreate() {
         super.onCreate();
-        if(SocketManager.getInstance().getConnectionStatus() != NetworkStatus.CONNECTED){
-            SocketManager.getInstance()
-                    .setListener(this)
-                    .connect();
-        }
         listenToNetworkChange();
 
     }
@@ -100,6 +98,7 @@ public class SocketService extends Service implements ISocketStatus {
     }
 
     public void onConnected(){
+        hasConnected = true;
         hasReconnect = false;
         sendHeartBeat();
         // todo: eventbus other activities
@@ -112,17 +111,40 @@ public class SocketService extends Service implements ISocketStatus {
         super.onDestroy();
     }
 
+    // if !hasConnected
+    //       show errorMsg
+    // else
+    //    if hasLost
+    //       show errorMsg
+    //    else
+    //       if !hasReconnect
+    //          hasReconnect = true;
+    //          reconnect
+    //       else
+    //          hasReconnect = false;
+    //          show errorMsg
     @Override
     public void onFailed(String errorMsg) {
-        if(!hasLost){
-            if(!hasReconnect){
-                hasReconnect = true;
-                SocketManager.getInstance().reconnect();
-            } else {
-                hasReconnect = false;
-                show(errorMsg);
-            }
-        }
+//        if(!hasLost){
+//            if(!hasReconnect && hasConnected){
+//                hasReconnect = true;
+//                SocketManager.getInstance().reconnect();
+//                return;
+//            }
+//        }
+//        hasConnected = false;
+//        hasReconnect = false;
+        show(errorMsg);
+        Timber.e(errorMsg);
+
+
+    }
+
+    /**
+     * do something here when terminated
+     */
+    @Override
+    public void onTerminated() {
 
     }
 

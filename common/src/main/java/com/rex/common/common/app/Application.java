@@ -5,8 +5,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.widget.Toast;
 
+
+import com.rex.common.BuildConfig;
+
 import java.util.ArrayList;
 import java.util.List;
+
+import timber.log.Timber;
 
 public abstract class Application extends android.app.Application {
 
@@ -16,6 +21,10 @@ public abstract class Application extends android.app.Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
+
+        if (BuildConfig.DEBUG) {
+            Timber.plant(new Timber.DebugTree());
+        }
 
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override

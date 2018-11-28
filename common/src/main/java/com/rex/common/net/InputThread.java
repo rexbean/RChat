@@ -4,50 +4,46 @@ import com.rex.common.utils.PacketUtil;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.Socket;
 
 public class InputThread extends Thread{
-    private static InputStream mIn;
-    private static Socket mSocket;
+    private final BufferedInputStream mBis;
     private ISocketStatus mListener;
+    private volatile boolean isStop = false;
 
     private byte[] packet = new byte[0];
     private int dataLen;
 
-    public InputThread(Socket socket, ISocketStatus listener){
-        mSocket = socket;
+    public InputThread(BufferedInputStream bis, ISocketStatus listener){
+        mBis = bis;
         mListener = listener;
-        init();
     }
 
-    private void init(){
-        try {
-            mIn = mSocket.getInputStream();
-        } catch (IOException e) {
-            onFailed("Get inputStream Failed");
-            e.printStackTrace();
-        }
+    private boolean isStop(){
+        return isStop;
     }
-
 
     @Override
     public void run() {
-        while(mSocket != null && mSocket.isConnected()){
-            try {
-                BufferedInputStream bis = new BufferedInputStream(mIn);
-                if(bis.available() <= 2){
+        try {
+            while(!isStop()){
+                if(mBis.available() <= 2){
                     continue;
                 }
-                dataLen = PacketUtil.mergeAndCut(packet, dataLen, bis);
-
-                // todo: dispatch the messages out using EventBus
-            } catch (IOException  e) {
-                onFailed("Receive Msg Failed");
-                e.printStackTrace();
+                dataLen = PacketUtil.mergeAndCut(packet, dataLen, mBis);
+                if(dataLen == -1){
+                    if(mListener != null){
+                        mListener.onFailed("Connection failed");
+                    }
+                }
+            }
+        } catch(IOException e) {
+            onFailed("Receive Msg Failed");
+            e.printStackTrace();
+        } finally {
+            if(mListener != null) {
+                mListener.onTerminated();
             }
         }
-
     }
 
     private void onFailed(String errorMsg){
@@ -57,9 +53,14 @@ public class InputThread extends Thread{
     }
 
     public void close(){
-        // todo: wait for all received
         try {
-            mIn.close();
+            isStop = true;
+            interrupt();
+            if(mBis != null) {
+                synchronized (mBis) {
+                    mBis.close();
+                }
+            }
         } catch (IOException e) {
             onFailed("Receive Close Failed");
             e.printStackTrace();
