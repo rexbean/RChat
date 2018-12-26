@@ -102,6 +102,9 @@ public class PacketUtil {
                 packet = saveData(packet, buffer, start, dataLen);
 
                 int rest = len - needLen;
+                if(rest == 0){
+                    return 0;
+                }
                 if(rest < HEAD_LEN + DATA_LEN) {
                     byte[] temp = new byte[HEAD_LEN + DATA_LEN];
                     rest = saveHead(temp, buffer, rest, bis);

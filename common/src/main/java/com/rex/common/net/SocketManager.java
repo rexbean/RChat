@@ -18,16 +18,16 @@ public class SocketManager implements INetwork, ISocketStatus{
 
     private static final Logger logger = LoggerFactory.getLogger(PacketUtil.class.getSimpleName());
     private static final int PORT = 6666;
-    private static final int RECONNECT_INTERVAL = 3000;
-    private static final int SOCKET_TIMETOUT = 2000;
-    private static final String IP_ADDR = "192.168.1.173";
+    private static final int RECONNECT_INTERVAL = 3;
+    private static final int SOCKET_TIMEOUT = 2000;
+    //private static final String IP_ADDR = "192.168.1.173";
     private static Socket mSocket;
-    //private static final String IP_ADDR = "10.0.2.2";
+    private static final String IP_ADDR = "10.0.2.2";
 
     private static OutputThread mOut;
     private static InputThread mIn;
 
-    private NetworkStatus mStatus = NetworkStatus.DISCONNECTED;
+    private volatile NetworkStatus mStatus = NetworkStatus.DISCONNECTED;
     private boolean reconnect = false;
 
     private ISocketStatus mListener;
@@ -61,7 +61,7 @@ public class SocketManager implements INetwork, ISocketStatus{
                 try {
                     logger.debug("before connect to server");
                     mSocket = new Socket();
-                    mSocket.connect(new InetSocketAddress(IP_ADDR,PORT),SOCKET_TIMETOUT);
+                    mSocket.connect(new InetSocketAddress(IP_ADDR,PORT), SOCKET_TIMEOUT);
                     logger.debug("Socket has connected");
                     init();
                     startThread();
@@ -124,7 +124,10 @@ public class SocketManager implements INetwork, ISocketStatus{
     @Override
     public void close() {
         try{
-            if(mSocket != null && !mSocket.isClosed()){
+            if(mStatus != NetworkStatus.DISCONNECTED
+                    && mStatus != NetworkStatus.FAILED
+                    && mSocket != null
+                    && !mSocket.isClosed()){
                 if(!mSocket.isInputShutdown()){
                     mSocket.shutdownInput();
                 }
@@ -133,11 +136,18 @@ public class SocketManager implements INetwork, ISocketStatus{
                 }
             }
 
-            mIn.close();
-            mOut.close();
+            logger.error("Socket is closing!!");
 
-            mIn = null;
-            mOut = null;
+            if(mIn != null) {
+                mIn.close();
+                mIn = null;
+            }
+
+            if(mOut != null){
+                mOut.close();
+                mOut = null;
+            }
+
 
             if(reconnect) {
                 reconnect();
@@ -153,15 +163,17 @@ public class SocketManager implements INetwork, ISocketStatus{
         try {
             for (int i = 0; i < 3; i++){
                 if(getConnectionStatus() != NetworkStatus.CONNECTED){
-                    wait(RECONNECT_INTERVAL);
-                    logger.debug("reconnect "+ (i+1)+" times");
                     connect();
+                    logger.debug(Thread.currentThread().toString());
+//                    Thread.sleep(RECONNECT_INTERVAL);
+                    // todo: reconnect after interval
+                    logger.debug("reconnect "+ (i+1)+" times");
                 } else {
                     return;
                 }
             }
             onFailed("Reconnect failed");
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             onFailed("Error happened during waiting for reconnecting 3 seconds");
         }
 
@@ -176,7 +188,10 @@ public class SocketManager implements INetwork, ISocketStatus{
 
     @Override
     public void onTerminated() {
-        close();
+        if(mStatus != NetworkStatus.DISCONNECTED){
+            mStatus = NetworkStatus.DISCONNECTED;
+            close();
+        }
     }
 
     @Override

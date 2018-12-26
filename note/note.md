@@ -158,4 +158,7 @@ public class SomeThread extends Thread {
     }
  }
 ```
-
+### 15. The relationship between parent thread and child thread
+- 
+- dameon
+- join 

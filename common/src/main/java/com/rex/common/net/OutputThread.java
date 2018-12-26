@@ -30,19 +30,22 @@ public class OutputThread extends Thread{
         try{
             while(!isStop()){
                 String msg = msgQueue.poll();
-                if(msg == null) {
-                    msgQueue.wait();
-                }
-                Timber.d("before send out message: %s", msg);
-                byte[] data = TypeUtil.ObjectToByte(msg);
-                byte[] packet = PacketUtil.constructPacket(data);
+                synchronized (msgQueue){
+                    if(msg == null) {
+                        msgQueue.wait();
+                    }
+                    msg = msgQueue.poll();
+                    Timber.d("before send out message: %s", msg);
+                    byte[] data = TypeUtil.ObjectToByte(msg);
+                    byte[] packet = PacketUtil.constructPacket(data);
 
-                mBos.write(packet);
-                mBos.flush();
-                Timber.d("after send out message: %s", msg);
+                    mBos.write(packet);
+                    mBos.flush();
+                    Timber.d("after send out message: %s", msg);
+                }
             }
         } catch (InterruptedException | IOException e){
-            onFailed("Receive Msg Failed");
+            onFailed("Send Msg Failed");
             e.printStackTrace();
         } finally {
             if (mListener != null) {
@@ -59,8 +62,11 @@ public class OutputThread extends Thread{
     }
 
     public static void appendMsg(String data){
-        msgQueue.offer(data+"\n");
-        msgQueue.notifyAll();
+        synchronized (msgQueue){
+            msgQueue.offer(data+"\n");
+            msgQueue.notify();
+        }
+
     }
 
     // todo: wait for finishing sending message
@@ -72,9 +78,6 @@ public class OutputThread extends Thread{
                 // prevent stopping writing
                 synchronized (mBos) {
                     mBos.close();
-                }
-                if(mListener != null) {
-                    mListener.onTerminated();
                 }
             }
             msgQueue.clear();
